@@ -20,12 +20,29 @@ const CHILD_SEXUAL_OFFENCE = [
 
 const PRIORITY = ['c2', 'c1', 'c5', 'c3', 'c4', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'c6'];
 const TIMELINE_ORDER = ['g1', 'g2', 'c2', 'g3', 'c1', 'g4', 'g5', 'c3', 'g6', 'c4', 'g7', 'c5', 'g8', 'c6'];
+const RELATED_AREAS = {
+  g1: ['Register the case'],
+  g2: ['Secure and record the scene', 'Victim and family'],
+  g3: ['Secure and record the scene'],
+  g4: ['Secure and record the scene'],
+  g5: ['Collect and seize evidence', 'Search and seizure powers'],
+  g6: ['Statements and witnesses'],
+  g7: ['Case diary, reports and supervision'],
+  g8: ['Charge sheet and court'],
+  c1: ['Victim and family', 'Statements and witnesses'],
+  c2: ['Victim and family', 'Forensic examination by crime type', 'Forensic laboratory'],
+  c3: ['Victim and family'],
+  c4: ['Digital and CCTV evidence', 'Collect and seize evidence'],
+  c5: ['Statements and witnesses', 'Victim and family'],
+  c6: ['Digital and CCTV evidence'],
+};
 const STORAGE_KEY = 'gujpol-workflow-11192050250093-2025-v1';
 let data;
 let sourceById;
 let milestones = [];
 let complete = new Set(['g1']);
 let visibleLimit = 25;
+let activeRelatedStep = null;
 
 function escapeHTML(value) {
   return String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
@@ -33,6 +50,10 @@ function escapeHTML(value) {
 function textOf(value) { return escapeHTML(value || ''); }
 function setText(id, value) { document.getElementById(id).textContent = value; }
 function sourceFor(step) { return sourceById.get(step.source); }
+function relatedEntries(step) {
+  const areas = RELATED_AREAS[step.id] || [];
+  return data.steps.filter(item => areas.includes(item.group));
+}
 function profileFromFIR() {
   const routed = data.case.crimeTypes.join(' ').toLowerCase();
   if (routed.includes('pocso') || data.case.sections.some(section => /pocso/i.test(section))) return CHILD_SEXUAL_OFFENCE;
@@ -67,7 +88,8 @@ function cardHTML(step, index, specific) {
   const actions = (source?.ticks || []).slice(0, 4).map(item => `<li>${textOf(item.do)}</li>`).join('');
   const baseText = source?.text || 'Consult the complete source guidance for this step.';
   const category = specific ? 'Case-related procedure' : 'Common procedure';
-  const card = `<details class="step-card"><summary><span class="card-check" aria-hidden="true">${status === 'complete' ? '✓' : ''}</span><span class="step-main"><span class="type-label">${category}</span><strong>${textOf(step.title)}</strong><small>${textOf(step.brief)}</small></span><span class="badge ${status}">${statusLabel(status)}</span><span class="chevron" aria-hidden="true">⌄</span></summary><div class="step-detail">${source?.case_action ? `<div class="detail-label">FOR THIS FIR</div><p>${textOf(source.case_action)}</p>` : ''}<div class="detail-label">ORIGINAL GUIDANCE</div><p>${textOf(baseText)}</p>${step.why ? `<div class="detail-label">WHY THIS STEP</div><p>${textOf(step.why)}</p>` : ''}${actions ? `<div class="detail-label">KEY ACTIONS</div><ul class="source-actions">${actions}</ul>` : ''}${tags ? `<div class="detail-label">SOURCE REFERENCES</div><div class="source-citations">${tags}</div>` : ''}<div class="detail-foot"><small>${source?.legal_basis?.length ? textOf(source.legal_basis.join(' · ')) : 'Review the complete source entry for detail.'}</small><button type="button" class="complete-button ${status === 'complete' ? 'undo' : ''}" data-toggle="${step.id}" ${step.completeFromFIR ? 'disabled title="Confirmed from FIR"' : ''}>${step.completeFromFIR ? 'Confirmed from FIR' : status === 'complete' ? 'Mark pending' : 'Mark complete'}</button></div><button type="button" class="text-action" data-source="${textOf(step.source)}" style="margin-top:12px">View complete source entry →</button></div></details>`;
+  const relatedCount = relatedEntries(step).length;
+  const card = `<details class="step-card"><summary><span class="card-check" aria-hidden="true">${status === 'complete' ? '✓' : ''}</span><span class="step-main"><span class="type-label">${category}</span><strong>${textOf(step.title)}</strong><small>${textOf(step.brief)}</small></span><span class="badge ${status}">${statusLabel(status)}</span><span class="chevron" aria-hidden="true">⌄</span></summary><div class="step-detail">${source?.case_action ? `<div class="detail-label">FOR THIS FIR</div><p>${textOf(source.case_action)}</p>` : ''}<div class="detail-label">ORIGINAL GUIDANCE</div><p>${textOf(baseText)}</p>${step.why ? `<div class="detail-label">WHY THIS STEP</div><p>${textOf(step.why)}</p>` : ''}${actions ? `<div class="detail-label">KEY ACTIONS</div><ul class="source-actions">${actions}</ul>` : ''}${tags ? `<div class="detail-label">SOURCE REFERENCES</div><div class="source-citations">${tags}</div>` : ''}<div class="detail-foot"><small>${source?.legal_basis?.length ? textOf(source.legal_basis.join(' · ')) : 'Review the complete source entry for detail.'}</small><button type="button" class="complete-button ${status === 'complete' ? 'undo' : ''}" data-toggle="${step.id}" ${step.completeFromFIR ? 'disabled title="Confirmed from FIR"' : ''}>${step.completeFromFIR ? 'Confirmed from FIR' : status === 'complete' ? 'Mark pending' : 'Mark complete'}</button></div><div class="related-guidance"><div><strong>Guidance in this area</strong><small>${relatedCount} source entries · review applicability</small></div><div class="related-links"><button type="button" data-source="${textOf(step.source)}">Primary source</button><button type="button" data-related="${step.id}">Browse related guidance <span aria-hidden="true">→</span></button></div></div></div></details>`;
   return `<div class="step-item timeline-row ${specific ? 'case-related' : 'common'} ${status}" id="step-${step.id}">${specific ? '<div class="timeline-blank"></div>' : `<div class="timeline-slot">${card}</div>`}<div class="timeline-marker" aria-label="Step ${index + 1}"><span>${String(index + 1).padStart(2, '0')}</span></div>${specific ? `<div class="timeline-slot">${card}</div>` : '<div class="timeline-blank"></div>'}</div>`;
 }
 function renderWorkflow() {
@@ -79,9 +101,11 @@ function renderWorkflow() {
   const done = milestones.filter(step => complete.has(step.id)).length;
   const current = currentStep();
   const optional = milestones.filter(step => step.optional && !complete.has(step.id)).length;
-  setText('progress-done', done);
-  setText('progress-total', milestones.length);
-  setText('progress-copy', `${done} of ${milestones.length} steps completed`);
+  setText('progress-copy', `${done} of ${milestones.length} milestones marked complete`);
+  const localDone = Math.max(0, done - 1);
+  setText('progress-state', `1 confirmed by FIR · ${localDone} browser-local update${localDone === 1 ? '' : 's'}`);
+  setText('milestone-count', milestones.length);
+  setText('guidance-count', data.steps.length);
   setText('count-complete', done);
   setText('count-current', current ? 1 : 0);
   setText('count-pending', milestones.length - done - (current ? 1 : 0) - optional);
@@ -96,7 +120,7 @@ function renderWorkflow() {
   document.getElementById('jump-next').hidden = !current;
 }
 function sourceSearchText(item) {
-  return [item.id, item.title, item.text, item.case_action, item.group, ...(item.legal_basis || []), ...(item.sources || []).map(source => `${source.citation} ${source.section}`)].join(' ').toLowerCase();
+  return [item.id, item.title, item.text, item.case_action, item.group, item.deadline, item.responsible, ...(item.legal_basis || []), ...(item.ticks || []).flatMap(tick => [tick.do, ...(tick.sub || [])]), ...(item.sources || []).map(source => `${source.citation} ${source.section}`)].join(' ').toLowerCase();
 }
 function libraryCard(item) {
   const title = item.title || (item.text || 'Untitled guidance').split(/[.;]/)[0].slice(0, 110);
@@ -109,19 +133,46 @@ function libraryCard(item) {
 function renderLibrary() {
   const term = document.getElementById('library-search').value.trim().toLowerCase();
   const group = document.getElementById('library-group').value;
-  const matches = data.steps.filter(item => (!group || item.group === group) && (!term || sourceSearchText(item).includes(term)));
+  const phase = document.getElementById('library-phase').value;
+  const priority = document.getElementById('library-priority').value;
+  const areas = activeRelatedStep ? RELATED_AREAS[activeRelatedStep.id] : null;
+  const matches = data.steps.filter(item => (!areas || areas.includes(item.group)) && (!group || item.group === group) && (!phase || item.phase === phase) && (!priority || item.triage === priority) && (!term || sourceSearchText(item).includes(term)));
+  if (activeRelatedStep) matches.sort((a, b) => Number(b.id === activeRelatedStep.source) - Number(a.id === activeRelatedStep.source));
   document.getElementById('library-results').innerHTML = matches.slice(0, visibleLimit).map(libraryCard).join('') || '<p class="empty-results">No guidance matches this search.</p>';
   document.getElementById('library-more').hidden = matches.length <= visibleLimit;
-  setText('library-total', `${matches.length} ENTRIES`);
+  setText('library-total', `${matches.length} OF ${data.steps.length} ENTRIES`);
+  document.getElementById('library-focus').hidden = !activeRelatedStep;
+  if (activeRelatedStep) setText('library-focus-label', `Guidance area: ${activeRelatedStep.title}`);
+  setText('library-filter-note', activeRelatedStep ? `Showing the source groups related to this milestone. Some entries are conditional or reference material; check applicability before acting.` : 'Guidance includes required, conditional and reference material. Check applicability against the case record.');
+}
+function resetLibraryFilters() {
+  ['library-search', 'library-group', 'library-phase', 'library-priority'].forEach(id => { document.getElementById(id).value = ''; });
+  visibleLimit = 25;
+}
+function showLibrary() {
+  selectTab('library', true);
+  window.history.pushState(null, '', '#library');
+}
+function browseAllGuidance() {
+  activeRelatedStep = null;
+  resetLibraryFilters();
+  renderLibrary();
+  showLibrary();
+}
+function openRelated(id) {
+  activeRelatedStep = milestones.find(step => step.id === id) || null;
+  resetLibraryFilters();
+  renderLibrary();
+  showLibrary();
 }
 function openSource(id) {
-  selectTab('library');
+  activeRelatedStep = null;
+  resetLibraryFilters();
   window.history.pushState(null, '', '#library');
   const search = document.getElementById('library-search');
   search.value = id;
-  document.getElementById('library-group').value = '';
-  visibleLimit = 25;
   renderLibrary();
+  selectTab('library');
   const result = document.getElementById(`source-${id}`);
   if (result) { result.open = true; result.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
 }
@@ -230,7 +281,11 @@ async function initialize() {
       }
       const source = event.target.closest('[data-source]');
       if (source) openSource(source.dataset.source);
+      const related = event.target.closest('[data-related]');
+      if (related) openRelated(related.dataset.related);
     });
+    document.getElementById('browse-guidance').addEventListener('click', browseAllGuidance);
+    document.getElementById('library-focus-clear').addEventListener('click', browseAllGuidance);
     document.getElementById('jump-next').addEventListener('click', () => {
       const next = currentStep();
       if (!next) return;
@@ -241,7 +296,7 @@ async function initialize() {
     });
     let searchTimer;
     document.getElementById('library-search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { visibleLimit = 25; renderLibrary(); }, 130); });
-    document.getElementById('library-group').addEventListener('change', () => { visibleLimit = 25; renderLibrary(); });
+    ['library-group', 'library-phase', 'library-priority'].forEach(id => document.getElementById(id).addEventListener('change', () => { visibleLimit = 25; renderLibrary(); }));
     document.getElementById('library-more').addEventListener('click', () => { visibleLimit += 25; renderLibrary(); });
   } catch (error) {
     document.getElementById('load-error').hidden = false;
