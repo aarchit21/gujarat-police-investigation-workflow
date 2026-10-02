@@ -19,6 +19,7 @@ const CHILD_SEXUAL_OFFENCE = [
 ];
 
 const PRIORITY = ['c2', 'c1', 'c5', 'c3', 'c4', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'c6'];
+const TIMELINE_ORDER = ['g1', 'g2', 'c2', 'g3', 'c1', 'g4', 'g5', 'c3', 'g6', 'c4', 'g7', 'c5', 'g8', 'c6'];
 const STORAGE_KEY = 'gujpol-workflow-11192050250093-2025-v1';
 let data;
 let sourceById;
@@ -65,14 +66,16 @@ function cardHTML(step, index, specific) {
   const tags = (source?.sources || []).slice(0, 2).map(item => `<span class="citation-tag">${textOf(citationLabel(item))}</span>`).join('');
   const actions = (source?.ticks || []).slice(0, 4).map(item => `<li>${textOf(item.do)}</li>`).join('');
   const baseText = source?.text || 'Consult the complete source guidance for this step.';
-  return `<div class="step-item ${status}${specific ? ' specific' : ''}" id="step-${step.id}"><span class="step-node" aria-hidden="true">${status === 'complete' ? '✓' : status === 'current' ? '•' : ''}</span><details class="step-card"><summary><span class="step-order">${String(index + 1).padStart(2, '0')}</span><span class="step-main"><strong>${textOf(step.title)}</strong><small>${textOf(step.brief)}</small></span><span class="badge ${status}">${statusLabel(status)}</span><span class="chevron" aria-hidden="true">⌄</span></summary><div class="step-detail">${source?.case_action ? `<div class="detail-label">FOR THIS FIR</div><p>${textOf(source.case_action)}</p>` : ''}<div class="detail-label">ORIGINAL GUIDANCE</div><p>${textOf(baseText)}</p>${step.why ? `<div class="detail-label">WHY THIS STEP</div><p>${textOf(step.why)}</p>` : ''}${actions ? `<div class="detail-label">KEY ACTIONS</div><ul class="source-actions">${actions}</ul>` : ''}${tags ? `<div class="detail-label">SOURCE REFERENCES</div><div class="source-citations">${tags}</div>` : ''}<div class="detail-foot"><small>${source?.legal_basis?.length ? textOf(source.legal_basis.join(' · ')) : 'Review the complete source entry for detail.'}</small><button type="button" class="complete-button ${status === 'complete' ? 'undo' : ''}" data-toggle="${step.id}" ${step.completeFromFIR ? 'disabled title="Confirmed from FIR"' : ''}>${step.completeFromFIR ? 'Confirmed from FIR' : status === 'complete' ? 'Mark pending' : 'Mark complete'}</button></div><button type="button" class="text-action" data-source="${textOf(step.source)}" style="margin-top:12px">View complete source entry →</button></div></details></div>`;
+  const category = specific ? 'Case-related procedure' : 'Common procedure';
+  const card = `<details class="step-card"><summary><span class="card-check" aria-hidden="true">${status === 'complete' ? '✓' : ''}</span><span class="step-main"><span class="type-label">${category}</span><strong>${textOf(step.title)}</strong><small>${textOf(step.brief)}</small></span><span class="badge ${status}">${statusLabel(status)}</span><span class="chevron" aria-hidden="true">⌄</span></summary><div class="step-detail">${source?.case_action ? `<div class="detail-label">FOR THIS FIR</div><p>${textOf(source.case_action)}</p>` : ''}<div class="detail-label">ORIGINAL GUIDANCE</div><p>${textOf(baseText)}</p>${step.why ? `<div class="detail-label">WHY THIS STEP</div><p>${textOf(step.why)}</p>` : ''}${actions ? `<div class="detail-label">KEY ACTIONS</div><ul class="source-actions">${actions}</ul>` : ''}${tags ? `<div class="detail-label">SOURCE REFERENCES</div><div class="source-citations">${tags}</div>` : ''}<div class="detail-foot"><small>${source?.legal_basis?.length ? textOf(source.legal_basis.join(' · ')) : 'Review the complete source entry for detail.'}</small><button type="button" class="complete-button ${status === 'complete' ? 'undo' : ''}" data-toggle="${step.id}" ${step.completeFromFIR ? 'disabled title="Confirmed from FIR"' : ''}>${step.completeFromFIR ? 'Confirmed from FIR' : status === 'complete' ? 'Mark pending' : 'Mark complete'}</button></div><button type="button" class="text-action" data-source="${textOf(step.source)}" style="margin-top:12px">View complete source entry →</button></div></details>`;
+  return `<div class="step-item timeline-row ${specific ? 'case-related' : 'common'} ${status}" id="step-${step.id}">${specific ? '<div class="timeline-blank"></div>' : `<div class="timeline-slot">${card}</div>`}<div class="timeline-marker" aria-label="Step ${index + 1}"><span>${String(index + 1).padStart(2, '0')}</span></div>${specific ? `<div class="timeline-slot">${card}</div>` : '<div class="timeline-blank"></div>'}</div>`;
 }
 function renderWorkflow() {
   const specific = milestones.filter(step => step.id.startsWith('c'));
-  document.getElementById('general-list').innerHTML = GENERAL.map((step, index) => cardHTML(step, index, false)).join('');
-  document.getElementById('specific-list').innerHTML = specific.map((step, index) => cardHTML(step, index, true)).join('') || '<p class="empty-results">No crime-specific route is present in this case data.</p>';
-  setText('general-count', `${GENERAL.length} STEPS`);
-  setText('specific-count', `${specific.length} STEPS`);
+  const ordered = TIMELINE_ORDER.map(id => milestones.find(step => step.id === id)).filter(Boolean);
+  document.getElementById('timeline-rows').innerHTML = ordered.map((step, index) => cardHTML(step, index, step.id.startsWith('c'))).join('');
+  setText('general-count', `${GENERAL.length} steps`);
+  setText('specific-count', `${specific.length} steps`);
   const done = milestones.filter(step => complete.has(step.id)).length;
   const current = currentStep();
   const optional = milestones.filter(step => step.optional && !complete.has(step.id)).length;
@@ -112,6 +115,8 @@ function renderLibrary() {
   setText('library-total', `${matches.length} ENTRIES`);
 }
 function openSource(id) {
+  selectTab('library');
+  window.history.pushState(null, '', '#library');
   const search = document.getElementById('library-search');
   search.value = id;
   document.getElementById('library-group').value = '';
@@ -120,14 +125,86 @@ function openSource(id) {
   const result = document.getElementById(`source-${id}`);
   if (result) { result.open = true; result.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
 }
-function updateNav() {
-  const links = [...document.querySelectorAll('.side-nav a')];
-  const current = [...links].reverse().find(link => { const target = document.querySelector(link.getAttribute('href')); return target && target.getBoundingClientRect().top < 150; }) || links[0];
-  links.forEach(link => link.classList.toggle('active', link === current));
+const TAB_NAMES = ['overview', 'workflow', 'library'];
+function selectTab(name, scroll = false) {
+  const selected = TAB_NAMES.includes(name) ? name : 'workflow';
+  TAB_NAMES.forEach(tabName => {
+    const active = tabName === selected;
+    document.getElementById(tabName).hidden = !active;
+    const tab = document.getElementById(`tab-${tabName}`);
+    tab.classList.toggle('active', active);
+    tab.setAttribute('aria-selected', String(active));
+    const sideLink = document.querySelector(`.side-nav a[href="#${tabName}"]`);
+    if (sideLink) sideLink.classList.toggle('active', active);
+  });
+  if (scroll) document.getElementById('case-tabs').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function setupTabs() {
+  selectTab(window.location.hash.slice(1));
+  document.querySelectorAll('.case-tabs a, .side-nav a[href^="#"]').forEach(link => {
+    link.addEventListener('click', event => {
+      const tab = link.getAttribute('href').slice(1);
+      if (!TAB_NAMES.includes(tab)) return;
+      event.preventDefault();
+      selectTab(tab, true);
+      window.history.pushState(null, '', `#${tab}`);
+    });
+  });
+  document.getElementById('case-tabs').addEventListener('keydown', event => {
+    if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+    event.preventDefault();
+    const active = TAB_NAMES.findIndex(name => document.getElementById(`tab-${name}`).getAttribute('aria-selected') === 'true');
+    const next = TAB_NAMES[(active + (event.key === 'ArrowRight' ? 1 : TAB_NAMES.length - 1)) % TAB_NAMES.length];
+    selectTab(next);
+    document.getElementById(`tab-${next}`).focus();
+    window.history.pushState(null, '', `#${next}`);
+  });
+  window.addEventListener('popstate', () => selectTab(window.location.hash.slice(1)));
+}
+function setupNavigation() {
+  const edge = document.getElementById('nav-edge');
+  const trigger = document.getElementById('menu-trigger');
+  const backdrop = document.getElementById('nav-backdrop');
+  const setOpen = (open) => {
+    edge.classList.toggle('is-open', open);
+    trigger.setAttribute('aria-expanded', String(open));
+    trigger.setAttribute('aria-label', open ? 'Close case navigation' : 'Open case navigation');
+    trigger.querySelector('span').textContent = open ? '×' : '☰';
+  };
+  trigger.addEventListener('click', () => {
+    if (window.matchMedia('(max-width: 620px)').matches) setOpen(!edge.classList.contains('is-open'));
+  });
+  backdrop.addEventListener('click', () => setOpen(false));
+  edge.querySelectorAll('.side-nav a').forEach(link => link.addEventListener('click', event => {
+    setOpen(false);
+    if (event.detail > 0) link.blur();
+  }));
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    setOpen(false);
+    if (window.matchMedia('(max-width: 620px)').matches) trigger.focus();
+    else if (edge.contains(document.activeElement)) document.activeElement.blur();
+  });
+  edge.addEventListener('mouseenter', () => {
+    if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) trigger.setAttribute('aria-expanded', 'true');
+  });
+  edge.addEventListener('mouseleave', () => {
+    if (!edge.classList.contains('is-open') && !edge.contains(document.activeElement)) trigger.setAttribute('aria-expanded', 'false');
+  });
+  edge.addEventListener('focusin', () => {
+    if (!window.matchMedia('(max-width: 620px)').matches) trigger.setAttribute('aria-expanded', 'true');
+  });
+  edge.addEventListener('focusout', () => {
+    setTimeout(() => {
+      if (!edge.contains(document.activeElement) && !edge.classList.contains('is-open')) trigger.setAttribute('aria-expanded', 'false');
+    }, 0);
+  });
 }
 async function initialize() {
+  setupNavigation();
+  setupTabs();
   try {
-    const response = await fetch('case-data.json');
+    const response = await fetch(document.body.dataset.caseData || 'case-data.json');
     if (!response.ok) throw new Error('Failed to load case data');
     data = await response.json();
     sourceById = new Map(data.steps.map(step => [step.id, step]));
@@ -166,7 +243,6 @@ async function initialize() {
     document.getElementById('library-search').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(() => { visibleLimit = 25; renderLibrary(); }, 130); });
     document.getElementById('library-group').addEventListener('change', () => { visibleLimit = 25; renderLibrary(); });
     document.getElementById('library-more').addEventListener('click', () => { visibleLimit += 25; renderLibrary(); });
-    window.addEventListener('scroll', updateNav, { passive: true });
   } catch (error) {
     document.getElementById('load-error').hidden = false;
     console.error(error);
