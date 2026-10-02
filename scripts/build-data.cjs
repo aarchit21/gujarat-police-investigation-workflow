@@ -25,6 +25,12 @@ function redact(value) {
 }
 
 const steps = source.steps.map((step) => redact(Object.fromEntries(fields.filter((field) => step[field] != null).map((field) => [field, step[field]]))));
+const privateOverviewLabels = new Set(['Place of offence', 'Complainant', 'Complainant address', 'Complainant mobile', 'Victim', 'Accused', 'Accused address', 'Accused mobile', 'Investigating Officer', 'Registering Officer']);
+const overviewFields = source.fir.fields.map((field) => ({
+  label: field.k,
+  value: privateOverviewLabels.has(field.k) ? 'Redacted in public view' : String(field.v).replace(/\b\d{10}\b/g, 'Redacted in public view'),
+  redacted: privateOverviewLabels.has(field.k),
+}));
 const output = {
   case: {
     number: source.fir.fir_number,
@@ -32,6 +38,7 @@ const output = {
     district: source.fir.raw.district.value,
     sections: source.fir.sections_stated,
     crimeTypes: source.routing.crime_types,
+    overviewFields,
   },
   groupOrder: source.group_order,
   steps,

@@ -18,7 +18,6 @@ const CHILD_SEXUAL_OFFENCE = [
   { id: 'c6', title: 'Check available CCTV along the route', brief: 'Preserve footage before it is overwritten, where cameras exist.', source: 'reference-forensic-by-crime--forensic-cctv-image-analysis-tl01-retrieve-the-cctv-data-from-th', why: 'The FIR describes travel between locations; footage may help establish chronology if available.', optional: true },
 ];
 
-const PRIORITY = ['c2', 'c1', 'c5', 'c3', 'c4', 'g2', 'g3', 'g4', 'g5', 'g6', 'g7', 'g8', 'c6'];
 const TIMELINE_ORDER = ['g1', 'g2', 'c2', 'g3', 'c1', 'g4', 'g5', 'c3', 'g6', 'c4', 'g7', 'c5', 'g8', 'c6'];
 const RELATED_AREAS = {
   g1: ['Register the case'],
@@ -37,12 +36,15 @@ const RELATED_AREAS = {
   c6: ['Digital and CCTV evidence'],
 };
 const STORAGE_KEY = 'gujpol-workflow-11192050250093-2025-v1';
+const SOURCE_STORAGE_KEY = 'gujpol-guidance-checklist-11192050250093-2025-v1';
 let data;
 let sourceById;
 let milestones = [];
 let complete = new Set(['g1']);
 let visibleLimit = 25;
 let activeRelatedStep = null;
+let guidanceClass = '';
+let sourceChecked = {};
 
 function escapeHTML(value) {
   return String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
@@ -59,8 +61,52 @@ function profileFromFIR() {
   if (routed.includes('pocso') || data.case.sections.some(section => /pocso/i.test(section))) return CHILD_SEXUAL_OFFENCE;
   return [];
 }
+const OVERVIEW_KEY_FIELDS = ['FIR No.', 'Police Station', 'District', 'Date & time of offence', 'Date & time FIR registered', 'Sections applied'];
+function overviewFieldHTML(field) {
+  return `<div class="overview-field ${field.label === 'Sections applied' ? 'wide' : ''}"><span>${textOf(field.label)}</span><strong class="${field.redacted ? 'redacted-value' : ''}">${textOf(field.value)}</strong></div>`;
+}
+function renderOverview() {
+  const fields = data.case.overviewFields || [];
+  const byLabel = new Map(fields.map(field => [field.label, field]));
+  const keyFields = OVERVIEW_KEY_FIELDS.map(label => byLabel.get(label)).filter(Boolean);
+  const additional = fields.filter(field => !OVERVIEW_KEY_FIELDS.includes(field.label));
+  document.getElementById('overview-key-fields').innerHTML = keyFields.map(overviewFieldHTML).join('');
+  document.getElementById('overview-other-fields').innerHTML = additional.map(overviewFieldHTML).join('');
+  setText('overview-more-count', `${additional.length} additional fields`);
+}
 function saveLocalState() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...complete])); } catch (_) { /* local storage may be disabled */ }
+}
+function restoreSourceChecks() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SOURCE_STORAGE_KEY));
+    if (saved && typeof saved === 'object' && !Array.isArray(saved)) sourceChecked = saved;
+  } catch (_) { /* retain unchecked guidance */ }
+}
+function saveSourceChecks() {
+  try { localStorage.setItem(SOURCE_STORAGE_KEY, JSON.stringify(sourceChecked)); } catch (_) { /* local storage may be disabled */ }
+}
+function guidanceClassFor(item) {
+  if (item.id.startsWith('core-')) return 'common';
+  if (item.id.startsWith('module-')) return 'specific';
+  return 'reference';
+}
+function sourceActions(item) {
+  if (!item.ticks?.length) return [{ key: 'review', text: 'I have reviewed this guidance entry.', nested: false }];
+  return item.ticks.flatMap((tick, index) => [
+    { key: `a${index}`, text: tick.do, nested: false },
+    ...(tick.sub || []).map((sub, subIndex) => ({ key: `a${index}-s${subIndex}`, text: sub, nested: true })),
+  ]);
+}
+function sourceProgress(item) {
+  const keys = new Set(Array.isArray(sourceChecked[item.id]) ? sourceChecked[item.id] : []);
+  const actions = sourceActions(item);
+  const checked = actions.filter(action => keys.has(action.key)).length;
+  return { actions, keys, checked, done: checked === actions.length };
+}
+function sourceCompletedLabel() {
+  const count = data.steps.filter(item => sourceProgress(item).done).length;
+  return `${count} guidance ${count === 1 ? 'entry' : 'entries'} checked locally`;
 }
 function restoreLocalState() {
   try {
@@ -69,7 +115,7 @@ function restoreLocalState() {
   } catch (_) { /* retain source-confirmed registration */ }
 }
 function currentStep() {
-  return PRIORITY.map(id => milestones.find(step => step.id === id)).find(step => step && !step.optional && !complete.has(step.id)) || milestones.find(step => !step.optional && !complete.has(step.id));
+  return TIMELINE_ORDER.map(id => milestones.find(step => step.id === id)).find(step => step && !step.optional && !complete.has(step.id));
 }
 function statusFor(step) {
   if (complete.has(step.id)) return 'complete';
@@ -87,10 +133,10 @@ function cardHTML(step, index, specific) {
   const tags = (source?.sources || []).slice(0, 2).map(item => `<span class="citation-tag">${textOf(citationLabel(item))}</span>`).join('');
   const actions = (source?.ticks || []).slice(0, 4).map(item => `<li>${textOf(item.do)}</li>`).join('');
   const baseText = source?.text || 'Consult the complete source guidance for this step.';
-  const category = specific ? 'Case-related procedure' : 'Common procedure';
+  const category = specific ? 'Crime-specific procedure' : 'Common procedure';
   const relatedCount = relatedEntries(step).length;
   const card = `<details class="step-card"><summary><span class="card-check" aria-hidden="true">${status === 'complete' ? '✓' : ''}</span><span class="step-main"><span class="type-label">${category}</span><strong>${textOf(step.title)}</strong><small>${textOf(step.brief)}</small></span><span class="badge ${status}">${statusLabel(status)}</span><span class="chevron" aria-hidden="true">⌄</span></summary><div class="step-detail">${source?.case_action ? `<div class="detail-label">FOR THIS FIR</div><p>${textOf(source.case_action)}</p>` : ''}<div class="detail-label">ORIGINAL GUIDANCE</div><p>${textOf(baseText)}</p>${step.why ? `<div class="detail-label">WHY THIS STEP</div><p>${textOf(step.why)}</p>` : ''}${actions ? `<div class="detail-label">KEY ACTIONS</div><ul class="source-actions">${actions}</ul>` : ''}${tags ? `<div class="detail-label">SOURCE REFERENCES</div><div class="source-citations">${tags}</div>` : ''}<div class="detail-foot"><small>${source?.legal_basis?.length ? textOf(source.legal_basis.join(' · ')) : 'Review the complete source entry for detail.'}</small><button type="button" class="complete-button ${status === 'complete' ? 'undo' : ''}" data-toggle="${step.id}" ${step.completeFromFIR ? 'disabled title="Confirmed from FIR"' : ''}>${step.completeFromFIR ? 'Confirmed from FIR' : status === 'complete' ? 'Mark pending' : 'Mark complete'}</button></div><div class="related-guidance"><div><strong>Guidance in this area</strong><small>${relatedCount} source entries · review applicability</small></div><div class="related-links"><button type="button" data-source="${textOf(step.source)}">Primary source</button><button type="button" data-related="${step.id}">Browse related guidance <span aria-hidden="true">→</span></button></div></div></div></details>`;
-  return `<div class="step-item timeline-row ${specific ? 'case-related' : 'common'} ${status}" id="step-${step.id}">${specific ? '<div class="timeline-blank"></div>' : `<div class="timeline-slot">${card}</div>`}<div class="timeline-marker" aria-label="Step ${index + 1}"><span>${String(index + 1).padStart(2, '0')}</span></div>${specific ? `<div class="timeline-slot">${card}</div>` : '<div class="timeline-blank"></div>'}</div>`;
+  return `<div class="step-item timeline-row ${specific ? 'crime-specific' : 'common'} ${status}" id="step-${step.id}">${specific ? '<div class="timeline-blank"></div>' : `<div class="timeline-slot">${card}</div>`}<div class="timeline-marker" aria-label="Step ${index + 1}"><span>${String(index + 1).padStart(2, '0')}</span></div>${specific ? `<div class="timeline-slot">${card}</div>` : '<div class="timeline-blank"></div>'}</div>`;
 }
 function renderWorkflow() {
   const specific = milestones.filter(step => step.id.startsWith('c'));
@@ -124,11 +170,14 @@ function sourceSearchText(item) {
 }
 function libraryCard(item) {
   const title = item.title || (item.text || 'Untitled guidance').split(/[.;]/)[0].slice(0, 110);
-  const actions = (item.ticks || []).map(action => `<li>${textOf(action.do)}${action.sub?.length ? `<ul>${action.sub.map(sub => `<li>${textOf(sub)}</li>`).join('')}</ul>` : ''}</li>`).join('');
+  const progress = sourceProgress(item);
+  const checklist = progress.actions.map(action => `<label class="source-check-row ${action.nested ? 'nested' : ''}"><input type="checkbox" data-source-check="${textOf(item.id)}" data-check-key="${action.key}" ${progress.keys.has(action.key) ? 'checked' : ''}><span>${textOf(action.text)}</span></label>`).join('');
   const details = (item.details || []).map(detail => `<li>${textOf(detail.text)} <small>— ${textOf([detail.citation, detail.section, detail.page ? `p. ${detail.page}` : ''].filter(Boolean).join(' · '))}</small></li>`).join('');
   const sources = (item.sources || []).map(source => `<span class="citation-tag" title="${textOf(source.authority)}">${textOf(citationLabel(source))}</span>`).join('');
   const conflicts = (item.conflicts || []).map(conflict => `<li>${textOf(typeof conflict === 'string' ? conflict : JSON.stringify(conflict))}</li>`).join('');
-  return `<details class="library-result" id="source-${textOf(item.id)}"><summary><span class="result-arrow">▸</span><span><strong>${textOf(title)}</strong><small>${textOf(item.group)} · ${textOf(item.phase)}${item.responsible ? ` · ${textOf(item.responsible)}` : ''}</small></span><span class="result-status">${textOf(item.triage?.replaceAll('_', ' ') || 'REFERENCE')}</span></summary><div class="result-detail">${item.case_action ? `<h4>For this FIR</h4><p>${textOf(item.case_action)}</p>` : ''}<h4>Original guidance</h4><p>${textOf(item.text)}</p>${item.triage_why ? `<h4>Why it appears</h4><p>${textOf(item.triage_why)}</p>` : ''}${item.deadline ? `<h4>Timing</h4><p>${textOf(item.deadline)}</p>` : ''}${item.applies_when ? `<h4>Applies when</h4><p>${textOf(item.applies_when)}</p>` : ''}${item.note ? `<h4>Note</h4><p>${textOf(item.note)}</p>` : ''}${item.legal_basis?.length ? `<h4>Legal basis</h4><p>${textOf(item.legal_basis.join(' · '))}</p>` : ''}${actions ? `<h4>Actions</h4><ul>${actions}</ul>` : ''}${details ? `<h4>Additional guidance</h4><ul>${details}</ul>` : ''}${conflicts ? `<h4>Source differences</h4><ul>${conflicts}</ul>` : ''}${sources ? `<h4>Sources</h4><div>${sources}</div>` : ''}</div></details>`;
+  const classLabel = ({ common: 'Common', specific: 'Crime-specific', reference: 'Supporting source' })[guidanceClassFor(item)];
+  const background = `<details class="source-background"><summary>Why, legal basis and source details <span aria-hidden="true">⌄</span></summary><div><h4>Original guidance</h4><p>${textOf(item.text)}</p>${item.triage_why ? `<h4>Why it appears</h4><p>${textOf(item.triage_why)}</p>` : ''}${item.deadline ? `<h4>Timing</h4><p>${textOf(item.deadline)}</p>` : ''}${item.applies_when ? `<h4>Applies when</h4><p>${textOf(item.applies_when)}</p>` : ''}${item.note ? `<h4>Note</h4><p>${textOf(item.note)}</p>` : ''}${item.legal_basis?.length ? `<h4>Legal basis</h4><p>${textOf(item.legal_basis.join(' · '))}</p>` : ''}${details ? `<h4>Additional guidance</h4><ul>${details}</ul>` : ''}${conflicts ? `<h4>Source differences</h4><ul>${conflicts}</ul>` : ''}${sources ? `<h4>Sources</h4><div>${sources}</div>` : ''}</div></details>`;
+  return `<details class="library-result ${progress.done ? 'checked' : ''}" id="source-${textOf(item.id)}"><summary><span class="result-arrow">▸</span><span><strong>${textOf(title)}</strong><small>${classLabel} · ${textOf(item.group)} · ${textOf(item.phase)}${item.responsible ? ` · ${textOf(item.responsible)}` : ''}</small></span><span class="result-progress">${progress.checked}/${progress.actions.length}</span><span class="result-status">${textOf(item.triage?.replaceAll('_', ' ') || 'REFERENCE')}</span></summary><div class="result-detail">${item.case_action ? `<h4>For this FIR</h4><p>${textOf(item.case_action)}</p>` : ''}<div class="source-checklist"><div class="source-check-head"><strong>Action checklist</strong><span class="source-check-count">${progress.checked} of ${progress.actions.length} checked locally</span><button type="button" data-source-all="${textOf(item.id)}">${progress.done ? 'Clear checks' : 'Check all items'}</button></div><div class="source-check-items">${checklist}</div></div>${background}</div></details>`;
 }
 function renderLibrary() {
   const term = document.getElementById('library-search').value.trim().toLowerCase();
@@ -136,18 +185,66 @@ function renderLibrary() {
   const phase = document.getElementById('library-phase').value;
   const priority = document.getElementById('library-priority').value;
   const areas = activeRelatedStep ? RELATED_AREAS[activeRelatedStep.id] : null;
-  const matches = data.steps.filter(item => (!areas || areas.includes(item.group)) && (!group || item.group === group) && (!phase || item.phase === phase) && (!priority || item.triage === priority) && (!term || sourceSearchText(item).includes(term)));
+  const matches = data.steps.filter(item => (!areas || areas.includes(item.group)) && (!guidanceClass || guidanceClassFor(item) === guidanceClass) && (!group || item.group === group) && (!phase || item.phase === phase) && (!priority || item.triage === priority) && (!term || sourceSearchText(item).includes(term)));
   if (activeRelatedStep) matches.sort((a, b) => Number(b.id === activeRelatedStep.source) - Number(a.id === activeRelatedStep.source));
   document.getElementById('library-results').innerHTML = matches.slice(0, visibleLimit).map(libraryCard).join('') || '<p class="empty-results">No guidance matches this search.</p>';
   document.getElementById('library-more').hidden = matches.length <= visibleLimit;
   setText('library-total', `${matches.length} OF ${data.steps.length} ENTRIES`);
+  setText('library-progress', sourceCompletedLabel());
   document.getElementById('library-focus').hidden = !activeRelatedStep;
   if (activeRelatedStep) setText('library-focus-label', `Guidance area: ${activeRelatedStep.title}`);
-  setText('library-filter-note', activeRelatedStep ? `Showing the source groups related to this milestone. Some entries are conditional or reference material; check applicability before acting.` : 'Guidance includes required, conditional and reference material. Check applicability against the case record.');
+  setText('library-filter-note', activeRelatedStep ? 'Showing source groups related to this milestone. Check applicability; checklist changes stay in this browser.' : 'Guidance includes required, conditional and reference material. Checklist changes stay in this browser, not the official case record.');
 }
 function resetLibraryFilters() {
   ['library-search', 'library-group', 'library-phase', 'library-priority'].forEach(id => { document.getElementById(id).value = ''; });
+  guidanceClass = '';
+  document.querySelectorAll('[data-guidance-class]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.guidanceClass === '')));
   visibleLimit = 25;
+}
+function selectGuidanceClass(value) {
+  guidanceClass = value;
+  document.querySelectorAll('[data-guidance-class]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.guidanceClass === value)));
+  visibleLimit = 25;
+  renderLibrary();
+}
+function updateSourceCard(item) {
+  const card = document.getElementById(`source-${item.id}`);
+  if (!card) return;
+  const progress = sourceProgress(item);
+  card.classList.toggle('checked', progress.done);
+  card.querySelector('.result-progress').textContent = `${progress.checked}/${progress.actions.length}`;
+  card.querySelector('.source-check-count').textContent = `${progress.checked} of ${progress.actions.length} checked locally`;
+  card.querySelector('[data-source-all]').textContent = progress.done ? 'Clear checks' : 'Check all items';
+  card.querySelectorAll('[data-source-check]').forEach(input => { input.checked = progress.keys.has(input.dataset.checkKey); });
+  setText('library-progress', sourceCompletedLabel());
+}
+function changeSourceCheck(id, key, checked) {
+  const item = sourceById.get(id);
+  if (!item) return;
+  const progress = sourceProgress(item);
+  if (checked) progress.keys.add(key); else progress.keys.delete(key);
+  if (/^a\d+$/.test(key)) {
+    progress.actions.filter(action => action.key.startsWith(`${key}-s`)).forEach(action => {
+      if (checked) progress.keys.add(action.key); else progress.keys.delete(action.key);
+    });
+  }
+  if (/^a\d+-s\d+$/.test(key)) {
+    const parent = key.split('-')[0];
+    const children = progress.actions.filter(action => action.key.startsWith(`${parent}-s`));
+    if (children.every(action => progress.keys.has(action.key))) progress.keys.add(parent);
+    else progress.keys.delete(parent);
+  }
+  sourceChecked[id] = [...progress.keys];
+  saveSourceChecks();
+  updateSourceCard(item);
+}
+function toggleEntireSource(id) {
+  const item = sourceById.get(id);
+  if (!item) return;
+  const progress = sourceProgress(item);
+  sourceChecked[id] = progress.done ? [] : progress.actions.map(action => action.key);
+  saveSourceChecks();
+  updateSourceCard(item);
 }
 function showLibrary() {
   selectTab('library', true);
@@ -261,9 +358,12 @@ async function initialize() {
     sourceById = new Map(data.steps.map(step => [step.id, step]));
     milestones = [...GENERAL, ...profileFromFIR()];
     restoreLocalState();
-    setText('section-list', data.case.sections.join(' · '));
+    restoreSourceChecks();
+    renderOverview();
     setText('source-count', data.steps.length);
     setText('library-intro', `Search all ${data.steps.length} redacted source entries. Open an entry for its full actions, legal basis and citations.`);
+    ['common', 'specific', 'reference'].forEach(category => setText(`class-${category}-count`, data.steps.filter(item => guidanceClassFor(item) === category).length));
+    setText('class-all-count', data.steps.length);
     const select = document.getElementById('library-group');
     data.groupOrder.filter(group => data.steps.some(step => step.group === group)).forEach(group => select.add(new Option(group, group)));
     renderWorkflow();
@@ -283,7 +383,13 @@ async function initialize() {
       if (source) openSource(source.dataset.source);
       const related = event.target.closest('[data-related]');
       if (related) openRelated(related.dataset.related);
+      const sourceAll = event.target.closest('[data-source-all]');
+      if (sourceAll) toggleEntireSource(sourceAll.dataset.sourceAll);
     });
+    document.getElementById('library-results').addEventListener('change', event => {
+      if (event.target.matches('[data-source-check]')) changeSourceCheck(event.target.dataset.sourceCheck, event.target.dataset.checkKey, event.target.checked);
+    });
+    document.querySelectorAll('[data-guidance-class]').forEach(button => button.addEventListener('click', () => selectGuidanceClass(button.dataset.guidanceClass)));
     document.getElementById('browse-guidance').addEventListener('click', browseAllGuidance);
     document.getElementById('library-focus-clear').addEventListener('click', browseAllGuidance);
     document.getElementById('jump-next').addEventListener('click', () => {
