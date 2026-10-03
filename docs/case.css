@@ -66,3 +66,12 @@ html[data-theme=dark] .search-wrap input::placeholder{color:#9eb4c1}
 html[data-theme=dark] .header-upload{background:#39789a}
 html[data-theme=dark] .menu-trigger{background:#1b2d3c;color:#e7eef3}
 html[data-theme=dark] #source-language-note{color:#a9c8d8}
+.overview-synopsis{border-bottom:1px solid #e7ecee;padding:15px 20px!important;background:#f9fbfc}
+.overview-synopsis p{font-size:11px;line-height:1.6;color:#425a6b;margin:6px 0 0;max-width:760px}
+html[data-theme=dark] .overview-synopsis{background:#203443;border-color:#34495a}
+html[data-theme=dark] .overview-synopsis p{color:#c2d1db}
+@media(max-width:620px){.overview-synopsis{padding:12px 14px!important}}
+html[data-theme=dark] .guidance-bridge button,html[data-theme=dark] .timeline-now button,html[data-theme=dark] .related-guidance button{color:#9ed8ef}
+html[data-theme=dark] .guidance-bridge small,html[data-theme=dark] .timeline-now p,html[data-theme=dark] .classification small{color:#b4c7d1}
+html[data-theme=dark] .timeline-now .label{color:#e4b77c}
+html[data-theme=dark] .classification-specific small{color:#d3bda9}

@@ -2,3 +2,6 @@ original-case.html
 original-home.html
 original-cases.json
 .DS_Store
+.translation-work.json
+docs/private-overview.json
+scripts/private-build-data.cjs

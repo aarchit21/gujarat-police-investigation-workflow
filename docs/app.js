@@ -47,6 +47,19 @@ let visibleLimit = 25;
 let activeRelatedStep = null;
 let guidanceClass = '';
 let sourceChecked = {};
+let guGuidance = null;
+
+function sourceText(item, field, fallback = '') {
+  if (prefs.language === 'gu') return guGuidance?.entries?.[item.id]?.[field] || fallback;
+  if (field.includes('.')) return fallback;
+  return item[field] || fallback;
+}
+function sourceLanguageAttributes() {
+  return prefs.language === 'gu' ? 'lang="gu"' : 'lang="en" class="source-original"';
+}
+function metaText(value) {
+  return prefs.language === 'gu' ? (guGuidance?.meta?.[value] || value) : value;
+}
 
 function escapeHTML(value) {
   return String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
@@ -65,7 +78,7 @@ function profileFromFIR() {
 }
 const OVERVIEW_KEY_FIELDS = ['FIR No.', 'Police Station', 'District', 'Date & time of offence', 'Date & time FIR registered', 'Sections applied'];
 function overviewFieldHTML(field) {
-  return `<div class="overview-field ${field.label === 'Sections applied' ? 'wide' : ''}"><span>${textOf(prefs.t(field.label))}</span><strong class="${field.redacted ? 'redacted-value' : ''}">${textOf(field.redacted ? prefs.t(field.value) : field.value)}</strong></div>`;
+  return `<div class="overview-field ${field.label === 'Sections applied' ? 'wide' : ''}"><span>${textOf(prefs.t(field.label))}</span><strong class="${field.redacted ? 'redacted-value' : ''}">${textOf(prefs.t(field.value))}</strong></div>`;
 }
 function renderOverview() {
   const fields = data.case.overviewFields || [];
@@ -94,10 +107,10 @@ function guidanceClassFor(item) {
   return 'reference';
 }
 function sourceActions(item) {
-  if (!item.ticks?.length) return [{ key: 'review', text: 'I have reviewed this guidance entry.', nested: false }];
+  if (!item.ticks?.length) return [{ key: 'review', text: prefs.t('I have reviewed this guidance entry.'), nested: false }];
   return item.ticks.flatMap((tick, index) => [
-    { key: `a${index}`, text: tick.do, nested: false },
-    ...(tick.sub || []).map((sub, subIndex) => ({ key: `a${index}-s${subIndex}`, text: sub, nested: true })),
+    { key: `a${index}`, text: sourceText(item, `ticks.${index}.do`, tick.do), nested: false },
+    ...(tick.sub || []).map((sub, subIndex) => ({ key: `a${index}-s${subIndex}`, text: sourceText(item, `ticks.${index}.sub.${subIndex}`, sub), nested: true })),
   ]);
 }
 function sourceProgress(item) {
@@ -127,17 +140,26 @@ function statusFor(step) {
 }
 function statusLabel(status) { return prefs.t(({ complete: 'Completed', current: 'Current', pending: 'Pending', optional: 'Optional' })[status]); }
 function citationLabel(item) {
-  return [item.citation || item.document, item.section, item.page ? `p. ${item.page}` : ''].filter(Boolean).join(' · ');
+  return [metaText(item.citation || item.document), item.section, item.page ? `${prefs.t('p.')} ${item.page}` : ''].filter(Boolean).join(' · ');
 }
 function cardHTML(step, index, specific) {
   const status = statusFor(step);
   const source = sourceFor(step);
   const tags = (source?.sources || []).slice(0, 2).map(item => `<span class="citation-tag">${textOf(citationLabel(item))}</span>`).join('');
-  const actions = (source?.ticks || []).slice(0, 4).map(item => `<li>${textOf(item.do)}</li>`).join('');
-  const baseText = source?.text || 'Consult the complete source guidance for this step.';
+  const actions = (source?.ticks || []).slice(0, 4).map((item, index) => `<li>${textOf(sourceText(source, `ticks.${index}.do`, item.do))}</li>`).join('');
+  const baseText = source ? sourceText(source, 'text', source.text) : prefs.t('Consult the complete source guidance for this step.');
   const category = prefs.t(specific ? 'Crime-specific procedure' : 'Common procedure');
   const relatedCount = relatedEntries(step).length;
-  const card = `<details class="step-card"><summary><span class="card-check" aria-hidden="true">${status === 'complete' ? '✓' : ''}</span><span class="step-main"><span class="type-label">${category}</span><strong>${textOf(stepText(step, 'title'))}</strong><small>${textOf(stepText(step, 'brief'))}</small></span><span class="badge ${status}">${statusLabel(status)}</span><span class="chevron" aria-hidden="true">⌄</span></summary><div class="step-detail">${source?.case_action ? `<div class="detail-label">FOR THIS FIR</div><p class="source-original" lang="en">${textOf(source.case_action)}</p>` : ''}<div class="detail-label">ORIGINAL GUIDANCE</div><p class="source-original" lang="en">${textOf(baseText)}</p>${step.why ? `<div class="detail-label">WHY THIS STEP</div><p>${textOf(stepText(step, 'why'))}</p>` : ''}${actions ? `<div class="detail-label">KEY ACTIONS</div><ul class="source-actions source-original" lang="en">${actions}</ul>` : ''}${tags ? `<div class="detail-label">SOURCE REFERENCES</div><div class="source-citations source-original" lang="en">${tags}</div>` : ''}<div class="detail-foot"><small class="source-original" lang="en">${source?.legal_basis?.length ? textOf(source.legal_basis.join(' · ')) : prefs.t('Review the complete source entry for detail.')}</small><button type="button" class="complete-button ${status === 'complete' ? 'undo' : ''}" data-toggle="${step.id}" ${step.completeFromFIR ? 'disabled title="Confirmed from FIR"' : ''}>${step.completeFromFIR ? 'Confirmed from FIR' : status === 'complete' ? 'Mark pending' : 'Mark complete'}</button></div><div class="related-guidance"><div><strong>Guidance in this area</strong><small>${relatedCount} source entries · review applicability</small></div><div class="related-links"><button type="button" data-source="${textOf(step.source)}">Primary source</button><button type="button" data-related="${step.id}">Browse related guidance <span aria-hidden="true">→</span></button></div></div></div></details>`;
+  const lang = sourceLanguageAttributes();
+  const card = `<details class="step-card"><summary><span class="card-check" aria-hidden="true">${status === 'complete' ? '✓' : ''}</span><span class="step-main"><span class="type-label">${category}</span><strong>${textOf(stepText(step, 'title'))}</strong><small>${textOf(stepText(step, 'brief'))}</small></span><span class="badge ${status}">${statusLabel(status)}</span><span class="chevron" aria-hidden="true">⌄</span></summary><div class="step-detail">
+    ${source?.case_action ? `<div class="detail-label">FOR THIS FIR</div><p ${lang}>${textOf(sourceText(source, 'case_action', source.case_action))}</p>` : ''}
+    <div class="detail-label">ORIGINAL GUIDANCE</div><p ${lang}>${textOf(baseText)}</p>
+    ${step.why ? `<div class="detail-label">WHY THIS STEP</div><p>${textOf(stepText(step, 'why'))}</p>` : ''}
+    ${actions ? `<div class="detail-label">KEY ACTIONS</div><ul class="source-actions" lang="${prefs.language}">${actions}</ul>` : ''}
+    ${tags ? `<div class="detail-label">SOURCE REFERENCES</div><div class="source-citations" lang="${prefs.language}">${tags}</div>` : ''}
+    <div class="detail-foot"><small lang="${prefs.language}">${source?.legal_basis?.length ? textOf(source.legal_basis.map(metaText).join(' · ')) : prefs.t('Review the complete source entry for detail.')}</small><button type="button" class="complete-button ${status === 'complete' ? 'undo' : ''}" data-toggle="${step.id}" ${step.completeFromFIR ? 'disabled title="Confirmed from FIR"' : ''}>${step.completeFromFIR ? 'Confirmed from FIR' : status === 'complete' ? 'Mark pending' : 'Mark complete'}</button></div>
+    <div class="related-guidance"><div><strong>Guidance in this area</strong><small>${relatedCount} source entries · review applicability</small></div><div class="related-links"><button type="button" data-source="${textOf(step.source)}">Primary source</button><button type="button" data-related="${step.id}">Browse related guidance <span aria-hidden="true">→</span></button></div></div>
+  </div></details>`;
   return `<div class="step-item timeline-row ${specific ? 'crime-specific' : 'common'} ${status}" id="step-${step.id}">${specific ? '<div class="timeline-blank"></div>' : `<div class="timeline-slot">${card}</div>`}<div class="timeline-marker" aria-label="Step ${index + 1}"><span>${String(index + 1).padStart(2, '0')}</span></div>${specific ? `<div class="timeline-slot">${card}</div>` : '<div class="timeline-blank"></div>'}</div>`;
 }
 function renderWorkflow() {
@@ -169,18 +191,19 @@ function renderWorkflow() {
   prefs.translate(document.getElementById('workflow'));
 }
 function sourceSearchText(item) {
-  return [item.id, item.title, item.text, item.case_action, item.group, item.deadline, item.responsible, ...(item.legal_basis || []), ...(item.ticks || []).flatMap(tick => [tick.do, ...(tick.sub || [])]), ...(item.sources || []).map(source => `${source.citation} ${source.section}`)].join(' ').toLowerCase();
+  return [item.id, item.title, item.text, item.case_action, item.group, prefs.t(item.group), item.deadline, item.responsible, metaText(item.responsible), ...Object.values(guGuidance?.entries?.[item.id] || {}), ...(item.legal_basis || []).flatMap(value => [value, metaText(value)]), ...(item.ticks || []).flatMap(tick => [tick.do, ...(tick.sub || [])]), ...(item.sources || []).flatMap(source => [source.citation, metaText(source.citation), source.section])].join(' ').toLowerCase();
 }
 function libraryCard(item) {
-  const title = item.title || (item.text || 'Untitled guidance').split(/[.;]/)[0].slice(0, 110);
+  const title = sourceText(item, 'title') || sourceText(item, 'text', item.text || prefs.t('Untitled guidance')).split(/[.;]/)[0].slice(0, 110);
   const progress = sourceProgress(item);
   const checklist = progress.actions.map(action => `<label class="source-check-row ${action.nested ? 'nested' : ''}"><input type="checkbox" data-source-check="${textOf(item.id)}" data-check-key="${action.key}" ${progress.keys.has(action.key) ? 'checked' : ''}><span>${textOf(action.text)}</span></label>`).join('');
-  const details = (item.details || []).map(detail => `<li>${textOf(detail.text)} <small>— ${textOf([detail.citation, detail.section, detail.page ? `p. ${detail.page}` : ''].filter(Boolean).join(' · '))}</small></li>`).join('');
-  const sources = (item.sources || []).map(source => `<span class="citation-tag" title="${textOf(source.authority)}">${textOf(citationLabel(source))}</span>`).join('');
-  const conflicts = (item.conflicts || []).map(conflict => `<li>${textOf(typeof conflict === 'string' ? conflict : JSON.stringify(conflict))}</li>`).join('');
+  const details = (item.details || []).map((detail, index) => `<li>${textOf(sourceText(item, `details.${index}.text`, detail.text))} <small>— ${textOf([metaText(detail.citation), detail.section, detail.page ? `${prefs.t('p.')} ${detail.page}` : ''].filter(Boolean).join(' · '))}</small></li>`).join('');
+  const sources = (item.sources || []).map(source => `<span class="citation-tag" title="${textOf(metaText(source.authority))}">${textOf(citationLabel(source))}</span>`).join('');
+  const conflicts = (item.conflicts || []).map((conflict, index) => `<li>${textOf(typeof conflict === 'string' ? sourceText(item, `conflicts.${index}`, conflict) : JSON.stringify(conflict))}</li>`).join('');
   const classLabel = prefs.t(({ common: 'Common', specific: 'Crime-specific', reference: 'Supporting source' })[guidanceClassFor(item)]);
-  const background = `<details class="source-background"><summary>Why, legal basis and source details <span aria-hidden="true">⌄</span></summary><div><h4>Original guidance</h4><p>${textOf(item.text)}</p>${item.triage_why ? `<h4>Why it appears</h4><p>${textOf(item.triage_why)}</p>` : ''}${item.deadline ? `<h4>Timing</h4><p>${textOf(item.deadline)}</p>` : ''}${item.applies_when ? `<h4>Applies when</h4><p>${textOf(item.applies_when)}</p>` : ''}${item.note ? `<h4>Note</h4><p>${textOf(item.note)}</p>` : ''}${item.legal_basis?.length ? `<h4>Legal basis</h4><p>${textOf(item.legal_basis.join(' · '))}</p>` : ''}${details ? `<h4>Additional guidance</h4><ul>${details}</ul>` : ''}${conflicts ? `<h4>Source differences</h4><ul>${conflicts}</ul>` : ''}${sources ? `<h4>Sources</h4><div>${sources}</div>` : ''}</div></details>`;
-  return `<details class="library-result ${progress.done ? 'checked' : ''}" id="source-${textOf(item.id)}"><summary><span class="result-arrow">▸</span><span><strong lang="en" class="source-original">${textOf(title)}</strong><small>${classLabel} · ${textOf(prefs.t(item.group))} · ${textOf(prefs.t(item.phase))}${item.responsible ? ` · <span class="source-original" lang="en">${textOf(item.responsible)}</span>` : ''}</small></span><span class="result-progress">${progress.checked}/${progress.actions.length}</span><span class="result-status">${textOf(prefs.t(({ MUST_DO: 'Must do', SHOULD_DO: 'Should do', REFERENCE: 'Reference' })[item.triage] || 'Reference'))}</span></summary><div class="result-detail">${item.case_action ? `<h4>For this FIR</h4><p class="source-original" lang="en">${textOf(item.case_action)}</p>` : ''}<div class="source-checklist"><div class="source-check-head"><strong>Action checklist</strong><span class="source-check-count">${progress.checked} of ${progress.actions.length} checked locally</span><button type="button" data-source-all="${textOf(item.id)}">${progress.done ? 'Clear checks' : 'Check all items'}</button></div><div class="source-check-items source-original" lang="en">${checklist}</div></div>${background}</div></details>`;
+  const lang = sourceLanguageAttributes();
+  const background = `<details class="source-background"><summary>Why, legal basis and source details <span aria-hidden="true">⌄</span></summary><div><h4>Original guidance</h4><p ${lang}>${textOf(sourceText(item, 'text', item.text))}</p>${item.triage_why ? `<h4>Why it appears</h4><p ${lang}>${textOf(sourceText(item, 'triage_why', item.triage_why))}</p>` : ''}${item.deadline ? `<h4>Timing</h4><p ${lang}>${textOf(sourceText(item, 'deadline', item.deadline))}</p>` : ''}${item.applies_when ? `<h4>Applies when</h4><p ${lang}>${textOf(sourceText(item, 'applies_when', item.applies_when))}</p>` : ''}${item.note ? `<h4>Note</h4><p ${lang}>${textOf(sourceText(item, 'note', item.note))}</p>` : ''}${item.legal_basis?.length ? `<h4>Legal basis</h4><p lang="${prefs.language}">${textOf(item.legal_basis.map(metaText).join(' · '))}</p>` : ''}${details ? `<h4>Additional guidance</h4><ul lang="${prefs.language}">${details}</ul>` : ''}${conflicts ? `<h4>Source differences</h4><ul lang="${prefs.language}">${conflicts}</ul>` : ''}${sources ? `<h4>Sources</h4><div lang="${prefs.language}">${sources}</div>` : ''}</div></details>`;
+  return `<details class="library-result ${progress.done ? 'checked' : ''}" id="source-${textOf(item.id)}"><summary><span class="result-arrow">▸</span><span><strong ${lang}>${textOf(title)}</strong><small>${classLabel} · ${textOf(prefs.t(item.group))} · ${textOf(prefs.t(item.phase))}${item.responsible ? ` · <span lang="${prefs.language}">${textOf(metaText(item.responsible))}</span>` : ''}</small></span><span class="result-progress">${progress.checked}/${progress.actions.length}</span><span class="result-status">${textOf(prefs.t(({ MUST_DO: 'Must do', SHOULD_DO: 'Should do', REFERENCE: 'Reference' })[item.triage] || 'Reference'))}</span></summary><div class="result-detail">${item.case_action ? `<h4>For this FIR</h4><p ${lang}>${textOf(sourceText(item, 'case_action', item.case_action))}</p>` : ''}<div class="source-checklist"><div class="source-check-head"><strong>Action checklist</strong><span class="source-check-count">${progress.checked} of ${progress.actions.length} checked locally</span><button type="button" data-source-all="${textOf(item.id)}">${progress.done ? 'Clear checks' : 'Check all items'}</button></div><div class="source-check-items" lang="${prefs.language}">${checklist}</div></div>${background}</div></details>`;
 }
 function renderLibrary() {
   const term = document.getElementById('library-search').value.trim().toLowerCase();
@@ -195,7 +218,7 @@ function renderLibrary() {
   setText('library-total', `${matches.length} OF ${data.steps.length} ENTRIES`);
   setText('library-progress', sourceCompletedLabel());
   document.getElementById('library-focus').hidden = !activeRelatedStep;
-  if (activeRelatedStep) setText('library-focus-label', `Guidance area: ${activeRelatedStep.title}`);
+  if (activeRelatedStep) setText('library-focus-label', `${prefs.t('Guidance area:')} ${stepText(activeRelatedStep, 'title')}`);
   setText('library-filter-note', activeRelatedStep ? 'Showing source groups related to this milestone. Check applicability; checklist changes stay in this browser.' : 'Guidance includes required, conditional and reference material. Checklist changes stay in this browser, not the official case record.');
   prefs.translate(document.getElementById('library'));
 }
@@ -356,9 +379,33 @@ async function initialize() {
   setupNavigation();
   setupTabs();
   try {
-    const response = await fetch(document.body.dataset.caseData || 'case-data.json');
-    if (!response.ok) throw new Error('Failed to load case data');
+    const [response, translationResponse] = await Promise.all([
+      fetch(document.body.dataset.caseData || 'case-data.json'),
+      fetch('../../gu-guidance.json?v=1').catch(() => ({ ok: false })),
+    ]);
+    if (!response.ok) throw new Error('Failed to load case guidance');
     data = await response.json();
+    if (translationResponse.ok) {
+      const draft = await translationResponse.json();
+      if (Object.keys(draft.entries || {}).length === data.steps.length) guGuidance = draft;
+    }
+    if (!guGuidance) {
+      document.querySelector('[data-language="gu"]').disabled = true;
+      if (prefs.language === 'gu') prefs.setLanguage('en');
+    }
+    if (['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)) {
+      try {
+        const privateResponse = await fetch('../../private-overview.json');
+        if (privateResponse.ok) {
+          const privateOverview = await privateResponse.json();
+          if (privateOverview.overviewFields?.length === 18) {
+            data.case.overviewFields = privateOverview.overviewFields;
+            if (privateOverview.narrativeSummary) document.querySelector('.overview-synopsis p').textContent = privateOverview.narrativeSummary;
+            document.querySelector('.overview-privacy').hidden = true;
+          }
+        }
+      } catch (_) { /* local full record is optional */ }
+    }
     sourceById = new Map(data.steps.map(step => [step.id, step]));
     milestones = [...GENERAL, ...profileFromFIR()];
     restoreLocalState();
