@@ -401,7 +401,6 @@ async function initialize() {
           if (privateOverview.overviewFields?.length === 18) {
             data.case.overviewFields = privateOverview.overviewFields;
             if (privateOverview.narrativeSummary) document.querySelector('.overview-synopsis p').textContent = privateOverview.narrativeSummary;
-            document.querySelector('.overview-privacy').hidden = true;
           }
         }
       } catch (_) { /* local full record is optional */ }

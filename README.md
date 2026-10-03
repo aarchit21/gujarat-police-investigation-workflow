@@ -2,7 +2,7 @@
 
 This static site has a case homepage and a case-specific investigation page. The homepage links to the existing live FIR uploader; GitHub Pages cannot run that processor. The case page reorganizes FIR `11192050250093/2025` into one numbered timeline with common procedures on the left, crime-specific procedures on the right, and a searchable library of all 854 original guidance entries.
 
-The public site is in `docs/`. Its FIR overview includes all 18 field labels from the source, with names, contacts, officer identities, and exact incident location redacted. Source guidance is retained in redacted `docs/case-data.json` with legal bases, detailed actions, and citations. The 14 milestones provide a concise overview; each opens guidance from related investigation areas. The full library supports Common, Crime-specific, and Supporting-source classification, search, time, importance, and activity filters. Area links are navigation aids, not a claim that every entry applies to the case.
+The public site is in `docs/`. Its FIR overview includes all 18 source fields with their full values. Source guidance is retained in redacted `docs/case-data.json` with legal bases, detailed actions, and citations. The 14 milestones provide a concise overview; each opens guidance from related investigation areas. The full library supports Common, Crime-specific, and Supporting-source classification, search, time, importance, and activity filters. Area links are navigation aids, not a claim that every entry applies to the case.
 
 Gujarati mode uses a checked-in translation of guidance titles, actions, checklists, details, and source metadata. The original English remains available by switching to English mode. To regenerate the draft, set `OLLAMA_API_KEY` only in the current process environment and run `node scripts/translate-guidance.cjs`, then `node scripts/verify-gu.cjs`. The key and translation checkpoint are not committed.
 
@@ -12,4 +12,4 @@ The original case HTML and the case-specific redaction helper are kept locally a
 
 GitHub Pages publishes `docs/` through `.github/workflows/pages.yml` after a push to `master`.
 
-For a local preview with the complete 18-field FIR overview and source narrative, run `node scripts/build-private-overview.cjs` and `node scripts/preview.cjs`, then open `http://127.0.0.1:8766/`. The generated `docs/private-overview.json` is ignored by Git and is used only when the case page runs on loopback. The preview server binds to `127.0.0.1`.
+For a local preview with the full source narrative, run `node scripts/build-private-overview.cjs` and `node scripts/preview.cjs`, then open `http://127.0.0.1:8766/`. The generated `docs/private-overview.json` is ignored by Git and is used only when the case page runs on loopback. The preview server binds to `127.0.0.1`.
