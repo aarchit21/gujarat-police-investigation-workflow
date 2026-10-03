@@ -17,3 +17,52 @@
 .library-heading #library-progress{display:block;margin-top:8px;color:#6f8592;font-size:10px}.guidance-classes{display:flex;gap:6px;margin:17px 0 0;overflow-x:auto;padding-bottom:2px}.guidance-classes button{border:1px solid #d9e4e8;background:#fff;color:#577182;border-radius:5px;padding:8px 11px;white-space:nowrap;font-size:10px;font-weight:800}.guidance-classes button span{font-size:9px;margin-left:4px;color:#8b9eaa}.guidance-classes button[aria-pressed=true]{background:#234f68;border-color:#234f68;color:#fff}.guidance-classes button[aria-pressed=true] span{color:#cbe0e9}.guidance-classes button:focus-visible,.source-check-row:focus-within,.source-check-head button:focus-visible,.source-background>summary:focus-visible{outline:2px solid #287998;outline-offset:2px}.result-progress{font-size:9px;color:#6c8290;background:#edf2f4;border-radius:3px;padding:4px 6px;white-space:nowrap}.library-result.checked .result-progress{color:#267868;background:#e7f3ee}.source-checklist{margin:10px 0 14px;border:1px solid #dde7e9;border-radius:6px;overflow:hidden}.source-check-head{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#f6f9fa}.source-check-head strong{font-size:10px;color:#34556a}.source-check-head span{font-size:9px;color:#81939e}.source-check-head button{margin-left:auto;border:0;background:none;color:#286f88;font-size:9px;font-weight:800;white-space:nowrap;padding:4px}.source-check-items{display:grid}.source-check-row{display:flex;align-items:flex-start;gap:11px;min-height:44px;padding:11px 12px;border-top:1px solid #eef2f3;cursor:pointer;color:#425a6b;font-size:10.5px;line-height:1.5}.source-check-row:hover{background:#f9fbfb}.source-check-row input{accent-color:#288776;width:18px;height:18px;flex:0 0 18px;margin:0}.source-check-row.nested{padding-left:35px;background:#fafcfc}.source-check-row input:checked+span{color:#748b93}.source-background{border-top:1px solid #e7edef;padding-top:4px}.library-result .source-background>summary{display:flex;align-items:center;gap:8px;list-style:none;padding:11px 0;color:#39718a;font-size:10px;font-weight:800}.source-background>summary::-webkit-details-marker{display:none}.source-background>summary span{margin-left:auto;transition:transform .2s}.source-background[open]>summary span{transform:rotate(180deg)}.source-background>div{padding-bottom:5px}.source-background h4:first-child{margin-top:4px}
 @media(max-width:620px){.guidance-classes{margin-top:13px}.guidance-classes button{padding:8px 10px}.library-result summary{gap:6px}.result-progress,.result-status{font-size:8px}.source-check-head{flex-wrap:wrap}.source-check-head button{margin-left:0}.source-check-row.nested{padding-left:28px}}
 .fir-overview>.overview-top{padding:18px 20px}@media(max-width:620px){.fir-overview>.overview-top{padding:14px}}
+
+/* Case navigation preferences stay inside the existing hover/focus drawer. */
+.nav-edge .sidebar{overflow-y:auto}
+.sidebar-bottom{margin-top:auto}
+.side-preferences{padding:17px 12px 12px;border-top:1px solid #2b4257}
+.side-preferences .side-label{padding:0 0 8px;color:#a7bdca}
+.side-preferences .side-label:not(:first-child){padding-top:15px}
+.language-switch{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:3px;background:#10283d;border:1px solid #334b60;border-radius:7px}
+.language-switch button{border:0;border-radius:4px;padding:8px 4px;background:transparent;color:#aebfca;font-size:11px;font-weight:700;min-height:35px}
+.language-switch button[aria-pressed=true]{background:#31546b;color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+.theme-switch{display:flex;align-items:center;gap:10px;width:100%;min-height:38px;padding:8px 10px;border:1px solid #334b60;border-radius:6px;background:#19364c;color:#e1eaf0;text-align:left;font-size:11px;font-weight:700}
+.theme-switch:hover,.language-switch button:hover{background:#31546b;color:#fff}
+.theme-switch>span:first-child{font-size:16px;color:#d9b983}
+.theme-dark-label{display:none}
+html[data-theme=dark] .theme-light-label{display:none}
+html[data-theme=dark] .theme-dark-label{display:inline}
+.side-preferences button:focus-visible{outline:2px solid #f1cb8c;outline-offset:2px}
+.sidebar-bottom .side-foot{margin-top:7px;padding-top:12px}
+#source-language-note{display:block;margin-top:7px;color:#547287;line-height:1.5}
+
+/* Dark palette applies across the case workspace, including expanded source material. */
+html[data-theme=dark]{color-scheme:dark;--ink:#e7eef3;--muted:#a6b7c3;--line:#34495a;--paper:#1b2d3c;--bg:#101d29;--common:#76bbdd;--common-soft:#1b3446;--related:#e2aa7e;--related-soft:#3a2c27;--teal:#63bdac;--teal-soft:#1f3d3d;--amber-soft:#3d3228;--shadow:0 7px 30px rgba(0,0,0,.12);background:#101d29}
+html[data-theme=dark] .case-page{background:#101d29;color:#e7eef3}
+html[data-theme=dark] .site-header,html[data-theme=dark] .fir-overview,html[data-theme=dark] .guidance-bridge,html[data-theme=dark] .timeline-now,html[data-theme=dark] .step-card,html[data-theme=dark] .library,html[data-theme=dark] .guidance-classes button,html[data-theme=dark] .search-wrap,html[data-theme=dark] .library select,html[data-theme=dark] .more-button{background:#1b2d3c;color:#e7eef3;border-color:#34495a}
+html[data-theme=dark] .site-header nav a,html[data-theme=dark] .case-tabs a,html[data-theme=dark] .breadcrumb-row,html[data-theme=dark] .case-heading p,html[data-theme=dark] .workflow-heading p,html[data-theme=dark] .overview-title p,html[data-theme=dark] .overview-route small,html[data-theme=dark] .overview-field span,html[data-theme=dark] .overview-more summary small,html[data-theme=dark] .progress-compact>span,html[data-theme=dark] .status-guide,html[data-theme=dark] .step-main small,html[data-theme=dark] .step-detail,html[data-theme=dark] .detail-foot small,html[data-theme=dark] .result-detail,html[data-theme=dark] .result-detail small,html[data-theme=dark] .source-check-row,html[data-theme=dark] .library-heading p,html[data-theme=dark] .library-filter-note,html[data-theme=dark] .library-footnote,html[data-theme=dark] .footer{color:#a9bdca}
+html[data-theme=dark] .case-heading .eyebrow,html[data-theme=dark] .section-kicker,html[data-theme=dark] .eyebrow,html[data-theme=dark] .label{color:#a9c4d3}
+html[data-theme=dark] .overview-route strong,html[data-theme=dark] .classification-specific strong{color:#f0bf98}
+html[data-theme=dark] .overview-field strong,html[data-theme=dark] .status-guide b,html[data-theme=dark] .guidance-bridge strong,html[data-theme=dark] .source-check-head strong,html[data-theme=dark] .related-guidance strong,html[data-theme=dark] .classification-common strong{color:#e3edf3}
+html[data-theme=dark] .overview-top,html[data-theme=dark] .overview-field,html[data-theme=dark] .overview-other-fields,html[data-theme=dark] .overview-route,html[data-theme=dark] .case-tabs,html[data-theme=dark] .step-detail,html[data-theme=dark] .related-guidance,html[data-theme=dark] .library-result,html[data-theme=dark] .library-footnote,html[data-theme=dark] .source-background,html[data-theme=dark] .source-checklist,html[data-theme=dark] .source-check-row,html[data-theme=dark] .footer{border-color:#34495a}
+html[data-theme=dark] .overview-privacy,html[data-theme=dark] .record-note,html[data-theme=dark] .library-focus,html[data-theme=dark] .source-check-head,html[data-theme=dark] .source-check-row.nested,html[data-theme=dark] .citation-tag,html[data-theme=dark] .result-progress,html[data-theme=dark] .result-status,html[data-theme=dark] .library-total{background:#233b4c;color:#bdcfda}
+html[data-theme=dark] .timeline-row.current .step-card{background:#302e2b;border-color:#9e784e}
+html[data-theme=dark] .timeline-marker span{background:#1b2d3c}
+html[data-theme=dark] .timeline-row.complete .timeline-marker span{background:#234c45}
+html[data-theme=dark] .timeline-track:before{background:#3d5667}
+html[data-theme=dark] .classification-common{background:#1b3446}
+html[data-theme=dark] .classification-specific{background:#3a2c27}
+html[data-theme=dark] .classification small{color:#b5c6d0}
+html[data-theme=dark] .step-card summary:hover,html[data-theme=dark] .library-result summary:hover,html[data-theme=dark] .overview-more summary:hover,html[data-theme=dark] .source-check-row:hover{background:#263d4d}
+html[data-theme=dark] .step-detail .complete-button,html[data-theme=dark] .guidance-classes button,html[data-theme=dark] .source-check-head button,html[data-theme=dark] .library-focus button{color:#a7d5e6}
+html[data-theme=dark] .step-detail .complete-button{background:#24413f;border-color:#457970}
+html[data-theme=dark] .badge.complete,html[data-theme=dark] .library-result.checked .result-progress{background:#234e46;color:#a4e1d1}
+html[data-theme=dark] .badge.current{background:#483928;color:#f2cf9e}
+html[data-theme=dark] .badge.pending,html[data-theme=dark] .badge.optional{background:#304354;color:#c6d3dc}
+html[data-theme=dark] .guidance-classes button[aria-pressed=true]{background:#386c89;color:#fff;border-color:#6db0d1}
+html[data-theme=dark] .search-wrap input{color:#e7eef3}
+html[data-theme=dark] .search-wrap input::placeholder{color:#9eb4c1}
+html[data-theme=dark] .header-upload{background:#39789a}
+html[data-theme=dark] .menu-trigger{background:#1b2d3c;color:#e7eef3}
+html[data-theme=dark] #source-language-note{color:#a9c8d8}

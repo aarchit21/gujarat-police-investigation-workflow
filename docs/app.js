@@ -37,6 +37,8 @@ const RELATED_AREAS = {
 };
 const STORAGE_KEY = 'gujpol-workflow-11192050250093-2025-v1';
 const SOURCE_STORAGE_KEY = 'gujpol-guidance-checklist-11192050250093-2025-v1';
+const prefs = window.VivechnaPrefs;
+function stepText(step, field) { return prefs.step(step, field); }
 let data;
 let sourceById;
 let milestones = [];
@@ -63,7 +65,7 @@ function profileFromFIR() {
 }
 const OVERVIEW_KEY_FIELDS = ['FIR No.', 'Police Station', 'District', 'Date & time of offence', 'Date & time FIR registered', 'Sections applied'];
 function overviewFieldHTML(field) {
-  return `<div class="overview-field ${field.label === 'Sections applied' ? 'wide' : ''}"><span>${textOf(field.label)}</span><strong class="${field.redacted ? 'redacted-value' : ''}">${textOf(field.value)}</strong></div>`;
+  return `<div class="overview-field ${field.label === 'Sections applied' ? 'wide' : ''}"><span>${textOf(prefs.t(field.label))}</span><strong class="${field.redacted ? 'redacted-value' : ''}">${textOf(field.redacted ? prefs.t(field.value) : field.value)}</strong></div>`;
 }
 function renderOverview() {
   const fields = data.case.overviewFields || [];
@@ -72,7 +74,7 @@ function renderOverview() {
   const additional = fields.filter(field => !OVERVIEW_KEY_FIELDS.includes(field.label));
   document.getElementById('overview-key-fields').innerHTML = keyFields.map(overviewFieldHTML).join('');
   document.getElementById('overview-other-fields').innerHTML = additional.map(overviewFieldHTML).join('');
-  setText('overview-more-count', `${additional.length} additional fields`);
+  setText('overview-more-count', prefs.t(`${additional.length} additional fields`));
 }
 function saveLocalState() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...complete])); } catch (_) { /* local storage may be disabled */ }
@@ -106,7 +108,7 @@ function sourceProgress(item) {
 }
 function sourceCompletedLabel() {
   const count = data.steps.filter(item => sourceProgress(item).done).length;
-  return `${count} guidance ${count === 1 ? 'entry' : 'entries'} checked locally`;
+  return prefs.t(`${count} guidance ${count === 1 ? 'entry' : 'entries'} checked locally`);
 }
 function restoreLocalState() {
   try {
@@ -123,7 +125,7 @@ function statusFor(step) {
   if (step.optional) return 'optional';
   return 'pending';
 }
-function statusLabel(status) { return ({ complete: 'Completed', current: 'Current', pending: 'Pending', optional: 'Optional' })[status]; }
+function statusLabel(status) { return prefs.t(({ complete: 'Completed', current: 'Current', pending: 'Pending', optional: 'Optional' })[status]); }
 function citationLabel(item) {
   return [item.citation || item.document, item.section, item.page ? `p. ${item.page}` : ''].filter(Boolean).join(' · ');
 }
@@ -133,23 +135,23 @@ function cardHTML(step, index, specific) {
   const tags = (source?.sources || []).slice(0, 2).map(item => `<span class="citation-tag">${textOf(citationLabel(item))}</span>`).join('');
   const actions = (source?.ticks || []).slice(0, 4).map(item => `<li>${textOf(item.do)}</li>`).join('');
   const baseText = source?.text || 'Consult the complete source guidance for this step.';
-  const category = specific ? 'Crime-specific procedure' : 'Common procedure';
+  const category = prefs.t(specific ? 'Crime-specific procedure' : 'Common procedure');
   const relatedCount = relatedEntries(step).length;
-  const card = `<details class="step-card"><summary><span class="card-check" aria-hidden="true">${status === 'complete' ? '✓' : ''}</span><span class="step-main"><span class="type-label">${category}</span><strong>${textOf(step.title)}</strong><small>${textOf(step.brief)}</small></span><span class="badge ${status}">${statusLabel(status)}</span><span class="chevron" aria-hidden="true">⌄</span></summary><div class="step-detail">${source?.case_action ? `<div class="detail-label">FOR THIS FIR</div><p>${textOf(source.case_action)}</p>` : ''}<div class="detail-label">ORIGINAL GUIDANCE</div><p>${textOf(baseText)}</p>${step.why ? `<div class="detail-label">WHY THIS STEP</div><p>${textOf(step.why)}</p>` : ''}${actions ? `<div class="detail-label">KEY ACTIONS</div><ul class="source-actions">${actions}</ul>` : ''}${tags ? `<div class="detail-label">SOURCE REFERENCES</div><div class="source-citations">${tags}</div>` : ''}<div class="detail-foot"><small>${source?.legal_basis?.length ? textOf(source.legal_basis.join(' · ')) : 'Review the complete source entry for detail.'}</small><button type="button" class="complete-button ${status === 'complete' ? 'undo' : ''}" data-toggle="${step.id}" ${step.completeFromFIR ? 'disabled title="Confirmed from FIR"' : ''}>${step.completeFromFIR ? 'Confirmed from FIR' : status === 'complete' ? 'Mark pending' : 'Mark complete'}</button></div><div class="related-guidance"><div><strong>Guidance in this area</strong><small>${relatedCount} source entries · review applicability</small></div><div class="related-links"><button type="button" data-source="${textOf(step.source)}">Primary source</button><button type="button" data-related="${step.id}">Browse related guidance <span aria-hidden="true">→</span></button></div></div></div></details>`;
+  const card = `<details class="step-card"><summary><span class="card-check" aria-hidden="true">${status === 'complete' ? '✓' : ''}</span><span class="step-main"><span class="type-label">${category}</span><strong>${textOf(stepText(step, 'title'))}</strong><small>${textOf(stepText(step, 'brief'))}</small></span><span class="badge ${status}">${statusLabel(status)}</span><span class="chevron" aria-hidden="true">⌄</span></summary><div class="step-detail">${source?.case_action ? `<div class="detail-label">FOR THIS FIR</div><p class="source-original" lang="en">${textOf(source.case_action)}</p>` : ''}<div class="detail-label">ORIGINAL GUIDANCE</div><p class="source-original" lang="en">${textOf(baseText)}</p>${step.why ? `<div class="detail-label">WHY THIS STEP</div><p>${textOf(stepText(step, 'why'))}</p>` : ''}${actions ? `<div class="detail-label">KEY ACTIONS</div><ul class="source-actions source-original" lang="en">${actions}</ul>` : ''}${tags ? `<div class="detail-label">SOURCE REFERENCES</div><div class="source-citations source-original" lang="en">${tags}</div>` : ''}<div class="detail-foot"><small class="source-original" lang="en">${source?.legal_basis?.length ? textOf(source.legal_basis.join(' · ')) : prefs.t('Review the complete source entry for detail.')}</small><button type="button" class="complete-button ${status === 'complete' ? 'undo' : ''}" data-toggle="${step.id}" ${step.completeFromFIR ? 'disabled title="Confirmed from FIR"' : ''}>${step.completeFromFIR ? 'Confirmed from FIR' : status === 'complete' ? 'Mark pending' : 'Mark complete'}</button></div><div class="related-guidance"><div><strong>Guidance in this area</strong><small>${relatedCount} source entries · review applicability</small></div><div class="related-links"><button type="button" data-source="${textOf(step.source)}">Primary source</button><button type="button" data-related="${step.id}">Browse related guidance <span aria-hidden="true">→</span></button></div></div></div></details>`;
   return `<div class="step-item timeline-row ${specific ? 'crime-specific' : 'common'} ${status}" id="step-${step.id}">${specific ? '<div class="timeline-blank"></div>' : `<div class="timeline-slot">${card}</div>`}<div class="timeline-marker" aria-label="Step ${index + 1}"><span>${String(index + 1).padStart(2, '0')}</span></div>${specific ? `<div class="timeline-slot">${card}</div>` : '<div class="timeline-blank"></div>'}</div>`;
 }
 function renderWorkflow() {
   const specific = milestones.filter(step => step.id.startsWith('c'));
   const ordered = TIMELINE_ORDER.map(id => milestones.find(step => step.id === id)).filter(Boolean);
   document.getElementById('timeline-rows').innerHTML = ordered.map((step, index) => cardHTML(step, index, step.id.startsWith('c'))).join('');
-  setText('general-count', `${GENERAL.length} steps`);
-  setText('specific-count', `${specific.length} steps`);
+  setText('general-count', prefs.t(`${GENERAL.length} steps`));
+  setText('specific-count', prefs.t(`${specific.length} steps`));
   const done = milestones.filter(step => complete.has(step.id)).length;
   const current = currentStep();
   const optional = milestones.filter(step => step.optional && !complete.has(step.id)).length;
-  setText('progress-copy', `${done} of ${milestones.length} milestones marked complete`);
+  setText('progress-copy', prefs.t(`${done} of ${milestones.length} milestones marked complete`));
   const localDone = Math.max(0, done - 1);
-  setText('progress-state', `1 confirmed by FIR · ${localDone} browser-local update${localDone === 1 ? '' : 's'}`);
+  setText('progress-state', prefs.t(`1 confirmed by FIR · ${localDone} browser-local update${localDone === 1 ? '' : 's'}`));
   setText('milestone-count', milestones.length);
   setText('guidance-count', data.steps.length);
   setText('count-complete', done);
@@ -160,10 +162,11 @@ function renderWorkflow() {
   bar.setAttribute('aria-valuemax', milestones.length);
   bar.setAttribute('aria-valuenow', done);
   document.getElementById('progress-fill').style.width = `${Math.round(done / milestones.length * 100)}%`;
-  setText('next-title', current?.title || 'All required steps marked complete');
-  setText('next-reason', current?.why || (current ? current.brief : 'Review the case diary and remaining optional leads.'));
-  setText('next-time', current?.urgent ? 'VERIFY STATUS' : current ? 'REVIEW NEXT' : 'REVIEW');
+  setText('next-title', current ? stepText(current, 'title') : prefs.t('All required steps marked complete'));
+  setText('next-reason', current ? stepText(current, current.why ? 'why' : 'brief') : prefs.t('Review the case diary and remaining optional leads.'));
+  setText('next-time', prefs.t(current?.urgent ? 'VERIFY STATUS' : current ? 'REVIEW NEXT' : 'REVIEW'));
   document.getElementById('jump-next').hidden = !current;
+  prefs.translate(document.getElementById('workflow'));
 }
 function sourceSearchText(item) {
   return [item.id, item.title, item.text, item.case_action, item.group, item.deadline, item.responsible, ...(item.legal_basis || []), ...(item.ticks || []).flatMap(tick => [tick.do, ...(tick.sub || [])]), ...(item.sources || []).map(source => `${source.citation} ${source.section}`)].join(' ').toLowerCase();
@@ -175,9 +178,9 @@ function libraryCard(item) {
   const details = (item.details || []).map(detail => `<li>${textOf(detail.text)} <small>— ${textOf([detail.citation, detail.section, detail.page ? `p. ${detail.page}` : ''].filter(Boolean).join(' · '))}</small></li>`).join('');
   const sources = (item.sources || []).map(source => `<span class="citation-tag" title="${textOf(source.authority)}">${textOf(citationLabel(source))}</span>`).join('');
   const conflicts = (item.conflicts || []).map(conflict => `<li>${textOf(typeof conflict === 'string' ? conflict : JSON.stringify(conflict))}</li>`).join('');
-  const classLabel = ({ common: 'Common', specific: 'Crime-specific', reference: 'Supporting source' })[guidanceClassFor(item)];
+  const classLabel = prefs.t(({ common: 'Common', specific: 'Crime-specific', reference: 'Supporting source' })[guidanceClassFor(item)]);
   const background = `<details class="source-background"><summary>Why, legal basis and source details <span aria-hidden="true">⌄</span></summary><div><h4>Original guidance</h4><p>${textOf(item.text)}</p>${item.triage_why ? `<h4>Why it appears</h4><p>${textOf(item.triage_why)}</p>` : ''}${item.deadline ? `<h4>Timing</h4><p>${textOf(item.deadline)}</p>` : ''}${item.applies_when ? `<h4>Applies when</h4><p>${textOf(item.applies_when)}</p>` : ''}${item.note ? `<h4>Note</h4><p>${textOf(item.note)}</p>` : ''}${item.legal_basis?.length ? `<h4>Legal basis</h4><p>${textOf(item.legal_basis.join(' · '))}</p>` : ''}${details ? `<h4>Additional guidance</h4><ul>${details}</ul>` : ''}${conflicts ? `<h4>Source differences</h4><ul>${conflicts}</ul>` : ''}${sources ? `<h4>Sources</h4><div>${sources}</div>` : ''}</div></details>`;
-  return `<details class="library-result ${progress.done ? 'checked' : ''}" id="source-${textOf(item.id)}"><summary><span class="result-arrow">▸</span><span><strong>${textOf(title)}</strong><small>${classLabel} · ${textOf(item.group)} · ${textOf(item.phase)}${item.responsible ? ` · ${textOf(item.responsible)}` : ''}</small></span><span class="result-progress">${progress.checked}/${progress.actions.length}</span><span class="result-status">${textOf(item.triage?.replaceAll('_', ' ') || 'REFERENCE')}</span></summary><div class="result-detail">${item.case_action ? `<h4>For this FIR</h4><p>${textOf(item.case_action)}</p>` : ''}<div class="source-checklist"><div class="source-check-head"><strong>Action checklist</strong><span class="source-check-count">${progress.checked} of ${progress.actions.length} checked locally</span><button type="button" data-source-all="${textOf(item.id)}">${progress.done ? 'Clear checks' : 'Check all items'}</button></div><div class="source-check-items">${checklist}</div></div>${background}</div></details>`;
+  return `<details class="library-result ${progress.done ? 'checked' : ''}" id="source-${textOf(item.id)}"><summary><span class="result-arrow">▸</span><span><strong lang="en" class="source-original">${textOf(title)}</strong><small>${classLabel} · ${textOf(prefs.t(item.group))} · ${textOf(prefs.t(item.phase))}${item.responsible ? ` · <span class="source-original" lang="en">${textOf(item.responsible)}</span>` : ''}</small></span><span class="result-progress">${progress.checked}/${progress.actions.length}</span><span class="result-status">${textOf(prefs.t(({ MUST_DO: 'Must do', SHOULD_DO: 'Should do', REFERENCE: 'Reference' })[item.triage] || 'Reference'))}</span></summary><div class="result-detail">${item.case_action ? `<h4>For this FIR</h4><p class="source-original" lang="en">${textOf(item.case_action)}</p>` : ''}<div class="source-checklist"><div class="source-check-head"><strong>Action checklist</strong><span class="source-check-count">${progress.checked} of ${progress.actions.length} checked locally</span><button type="button" data-source-all="${textOf(item.id)}">${progress.done ? 'Clear checks' : 'Check all items'}</button></div><div class="source-check-items source-original" lang="en">${checklist}</div></div>${background}</div></details>`;
 }
 function renderLibrary() {
   const term = document.getElementById('library-search').value.trim().toLowerCase();
@@ -194,6 +197,7 @@ function renderLibrary() {
   document.getElementById('library-focus').hidden = !activeRelatedStep;
   if (activeRelatedStep) setText('library-focus-label', `Guidance area: ${activeRelatedStep.title}`);
   setText('library-filter-note', activeRelatedStep ? 'Showing source groups related to this milestone. Check applicability; checklist changes stay in this browser.' : 'Guidance includes required, conditional and reference material. Checklist changes stay in this browser, not the official case record.');
+  prefs.translate(document.getElementById('library'));
 }
 function resetLibraryFilters() {
   ['library-search', 'library-group', 'library-phase', 'library-priority'].forEach(id => { document.getElementById(id).value = ''; });
@@ -213,8 +217,8 @@ function updateSourceCard(item) {
   const progress = sourceProgress(item);
   card.classList.toggle('checked', progress.done);
   card.querySelector('.result-progress').textContent = `${progress.checked}/${progress.actions.length}`;
-  card.querySelector('.source-check-count').textContent = `${progress.checked} of ${progress.actions.length} checked locally`;
-  card.querySelector('[data-source-all]').textContent = progress.done ? 'Clear checks' : 'Check all items';
+  card.querySelector('.source-check-count').textContent = prefs.t(`${progress.checked} of ${progress.actions.length} checked locally`);
+  card.querySelector('[data-source-all]').textContent = prefs.t(progress.done ? 'Clear checks' : 'Check all items');
   card.querySelectorAll('[data-source-check]').forEach(input => { input.checked = progress.keys.has(input.dataset.checkKey); });
   setText('library-progress', sourceCompletedLabel());
 }
@@ -368,6 +372,14 @@ async function initialize() {
     data.groupOrder.filter(group => data.steps.some(step => step.group === group)).forEach(group => select.add(new Option(group, group)));
     renderWorkflow();
     renderLibrary();
+    prefs.translate();
+    document.addEventListener('vivechna:languagechange', () => {
+      renderOverview();
+      renderWorkflow();
+      renderLibrary();
+      setText('library-intro', prefs.t(`Search all ${data.steps.length} redacted source entries. Open an entry for its full actions, legal basis and citations.`));
+      prefs.translate();
+    });
     document.addEventListener('click', event => {
       const toggle = event.target.closest('[data-toggle]');
       if (toggle) {
