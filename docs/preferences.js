@@ -41,7 +41,6 @@
     if ((match = /^(\d+) additional fields$/.exec(value))) return `વધારાની ${match[1]} વિગતો`;
     if ((match = /^(\d+) steps$/.exec(value))) return `${match[1]} પગલાં`;
     if ((match = /^(\d+) of (\d+) milestones marked complete$/.exec(value))) return `${match[2]}માંથી ${match[1]} મુખ્ય પગલાં પૂર્ણ`;
-    if ((match = /^1 confirmed by FIR · (\d+) browser-local updates?$/.exec(value))) return `૧ એફઆઈઆરમાંથી પુષ્ટિ · ${match[1]} સ્થાનિક ફેરફાર`;
     if ((match = /^(\d+) guidance entries? checked locally$/.exec(value))) return `${match[1]} માર્ગદર્શન નોંધ સ્થાનિક રીતે ચિહ્નિત`;
     if ((match = /^(\d+) of (\d+) checked locally$/.exec(value))) return `${match[2]}માંથી ${match[1]} સ્થાનિક રીતે ચિહ્નિત`;
     if ((match = /^(\d+) source entries · review applicability$/.exec(value))) return `${match[1]} મૂળ નોંધો · લાગુ પડે છે કે નહીં તપાસો`;

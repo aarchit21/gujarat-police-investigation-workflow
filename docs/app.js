@@ -172,8 +172,6 @@ function renderWorkflow() {
   const current = currentStep();
   const optional = milestones.filter(step => step.optional && !complete.has(step.id)).length;
   setText('progress-copy', prefs.t(`${done} of ${milestones.length} milestones marked complete`));
-  const localDone = Math.max(0, done - 1);
-  setText('progress-state', prefs.t(`1 confirmed by FIR · ${localDone} browser-local update${localDone === 1 ? '' : 's'}`));
   setText('milestone-count', milestones.length);
   setText('guidance-count', data.steps.length);
   setText('count-complete', done);
