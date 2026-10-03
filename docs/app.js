@@ -411,7 +411,7 @@ async function initialize() {
     restoreSourceChecks();
     renderOverview();
     setText('source-count', data.steps.length);
-    setText('library-intro', `Search all ${data.steps.length} redacted source entries. Open an entry for its full actions, legal basis and citations.`);
+    setText('library-intro', `Search all ${data.steps.length} source entries. Open an entry for its full actions, legal basis and citations.`);
     ['common', 'specific', 'reference'].forEach(category => setText(`class-${category}-count`, data.steps.filter(item => guidanceClassFor(item) === category).length));
     setText('class-all-count', data.steps.length);
     const select = document.getElementById('library-group');
@@ -423,7 +423,7 @@ async function initialize() {
       renderOverview();
       renderWorkflow();
       renderLibrary();
-      setText('library-intro', prefs.t(`Search all ${data.steps.length} redacted source entries. Open an entry for its full actions, legal basis and citations.`));
+      setText('library-intro', prefs.t(`Search all ${data.steps.length} source entries. Open an entry for its full actions, legal basis and citations.`));
       prefs.translate();
     });
     document.addEventListener('click', event => {

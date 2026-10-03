@@ -46,7 +46,7 @@
     if ((match = /^(\d+) of (\d+) checked locally$/.exec(value))) return `${match[2]}માંથી ${match[1]} સ્થાનિક રીતે ચિહ્નિત`;
     if ((match = /^(\d+) source entries · review applicability$/.exec(value))) return `${match[1]} મૂળ નોંધો · લાગુ પડે છે કે નહીં તપાસો`;
     if ((match = /^(\d+) OF (\d+) ENTRIES$/.exec(value))) return `${match[2]}માંથી ${match[1]} નોંધો`;
-    if ((match = /^Search all (\d+) redacted source entries\. Open an entry for its full actions, legal basis and citations\.$/.exec(value))) return `છુપાવેલી ઓળખ સાથેની ${match[1]} મૂળ નોંધો શોધો. સંપૂર્ણ કાર્યવાહી, કાનૂની આધાર અને સંદર્ભ માટે નોંધ ખોલો.`;
+    if ((match = /^Search all (\d+) source entries\. Open an entry for its full actions, legal basis and citations\.$/.exec(value))) return `${match[1]} મૂળ નોંધો શોધો. સંપૂર્ણ કાર્યવાહી, કાનૂની આધાર અને સંદર્ભ માટે નોંધ ખોલો.`;
     if (value === 'Guidance includes required, conditional and reference material. Checklist changes stay in this browser, not the official case record.') return 'માર્ગદર્શનમાં ફરજિયાત, શરતી અને સંદર્ભ સામગ્રી છે. ચેકલિસ્ટના ફેરફારો આ બ્રાઉઝરમાં જ રહે છે; સત્તાવાર કેસ રેકોર્ડમાં નહીં.';
     if (value === 'Showing source groups related to this milestone. Check applicability; checklist changes stay in this browser.') return 'આ પગલાને સંબંધિત મૂળ નોંધો બતાવેલી છે. લાગુ પડે છે કે નહીં તપાસો; ચેકલિસ્ટના ફેરફારો આ બ્રાઉઝરમાં રહે છે.';
     return value;

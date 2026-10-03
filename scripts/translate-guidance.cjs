@@ -1,4 +1,4 @@
-// Generate a checked-in Gujarati draft from the already-redacted public source data.
+// Generate a checked-in Gujarati draft from the published source data.
 // The Ollama key is read only from the process environment and is never written here.
 const fs = require('node:fs');
 const path = require('node:path');
@@ -113,7 +113,7 @@ async function translateBatch(parts) {
     think: false,
     options: { temperature: 0, num_ctx: 16384 },
     messages: [
-      { role: 'system', content: 'You are translating source-linked Indian police investigation guidance from English into clear, formal Gujarati. Translate every input string faithfully and completely. Do not add, omit, summarize, explain, or change legal conditions, negations, deadlines, named Acts, section numbers, years, measurements, or citations. Retain legal acronyms such as BNSS, BNS, BSA and POCSO exactly. Keep placeholders such as "the victim" and "the accused" impersonal. Return only a JSON object with a translations array in the same order. Never include the original English alongside the Gujarati.' },
+      { role: 'system', content: 'You are translating source-linked Indian police investigation guidance from English into clear, formal Gujarati. Translate every input string faithfully and completely. Do not add, omit, summarize, explain, or change legal conditions, negations, deadlines, names, places, named Acts, section numbers, years, measurements, or citations. Retain legal acronyms such as BNSS, BNS, BSA and POCSO exactly. Return only a JSON object with a translations array in the same order. Never include the original English alongside the Gujarati.' },
       { role: 'user', content: JSON.stringify({ translations: strings }) },
     ],
   };
@@ -172,7 +172,7 @@ async function main() {
       const index = nextBatch++;
       const parts = batches[index];
       try {
-        if (sample) console.log(`Testing ${model} on ${parts.length} redacted guidance segment`);
+        if (sample) console.log(`Testing ${model} on ${parts.length} guidance segment`);
         const translated = await translateResilient(parts, `Batch ${index + 1}/${batches.length}`);
         parts.forEach((part, partIndex) => { state.translations[keyOf(part)] = translated.output[partIndex]; });
         inputTokens += translated.usage.input;
